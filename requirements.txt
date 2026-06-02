@@ -1,0 +1,5 @@
+# Author: Mihir Brijesh Solanki (40481948)
+# Production dependencies for CWE Insight
+
+flask>=3.1.0
+defusedxml>=0.7.1

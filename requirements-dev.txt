@@ -1,0 +1,9 @@
+# Author: Mihir Brijesh Solanki (40481948)
+# Development and testing dependencies for CWE Insight
+
+-r requirements.txt
+
+pytest>=8.3.0
+pytest-cov>=6.0.0
+bandit>=1.8.0
+safety>=3.3.0

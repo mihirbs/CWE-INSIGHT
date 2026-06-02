@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<!-- This HTML file serves as the main dashboard interface for the CWE Insight application.
+   It provides a user-friendly web interface to explore CWE weaknesses, view analysis,
+   and interact with the data through API calls. The design uses a dark theme with
+   monospace fonts for a technical look, and includes interactive elements for
+   searching and displaying CWE information. -->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CWE Insight</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --surface: #111118;
+      --surface2: #1a1a24;
+      --border: #2a2a3a;
+      --accent: #00ff88;
+      --accent2: #ff4444;
+      --accent3: #4488ff;
+      --text: #e8e8f0;
+      --text-dim: #888899;
+      --mono: 'Space Mono', monospace;
+      --sans: 'DM Sans', sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Grid background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,255,136,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,255,136,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
+
+    /* Header */
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 20px 0;
+      position: sticky;
+      top: 0;
+      background: rgba(10,10,15,0.95);
+      backdrop-filter: blur(10px);
+      z-index: 100;
+    }
+    .header-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .logo {
+      font-family: var(--mono);
+      font-size: 18px;
+      color: var(--accent);
+      letter-spacing: -0.5px;
+    }
+    .logo span { color: var(--text-dim); }
+    .badge {
+      font-family: var(--mono);
+      font-size: 10px;
+      background: rgba(0,255,136,0.1);
+      border: 1px solid rgba(0,255,136,0.3);
+      color: var(--accent);
+      padding: 3px 8px;
+      border-radius: 3px;
+    }
+
+    /* Hero */
+    .hero {
+      padding: 24px 0 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .hero h1 {
+      font-family: var(--mono);
+      font-size: clamp(28px, 5vw, 48px);
+      line-height: 1.1;
+      margin-bottom: 12px;
+    }
+    .hero h1 em { color: var(--accent); font-style: normal; }
+    .hero p {
+      color: var(--text-dim);
+      font-size: 15px;
+      max-width: 560px;
+      line-height: 1.6;
+    }
+    .stat-row {
+      display: flex;
+      gap: 32px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+    }
+    .stat {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .stat-num {
+      font-family: var(--mono);
+      font-size: 28px;
+      color: var(--accent);
+    }
+    .stat-label {
+      font-size: 11px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: 1px solid var(--border);
+      padding-top: 16px;
+    }
+    .tab {
+      font-family: var(--mono);
+      font-size: 12px;
+      padding: 10px 20px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      border-bottom: none;
+      color: var(--text-dim);
+      background: none;
+      transition: all 0.15s;
+      letter-spacing: 0.5px;
+      position: relative;
+      bottom: -1px;
+    }
+    .tab:hover { color: var(--text); }
+    .tab.active {
+      color: var(--accent);
+      border-color: var(--border);
+      background: var(--surface);
+      border-bottom-color: var(--surface);
+    }
+
+    /* Panels */
+    .panel { display: none; padding: 32px 0; }
+    .panel.active { display: block; }
+
+    /* Search panel */
+    .search-bar {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .input-group label {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    input[type="number"], select {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 12px;
+      font-family: var(--mono);
+      font-size: 13px;
+      border-radius: 4px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    input[type="number"] { width: 120px; }
+    select { width: 150px; cursor: pointer; }
+    input:focus, select:focus { border-color: var(--accent); }
+
+    .btn {
+      font-family: var(--mono);
+      font-size: 12px;
+      padding: 8px 20px;
+      border: 1px solid var(--accent);
+      background: rgba(0,255,136,0.1);
+      color: var(--accent);
+      cursor: pointer;
+      border-radius: 4px;
+      transition: all 0.15s;
+      align-self: flex-end;
+      letter-spacing: 0.5px;
+    }
+    .btn:hover { background: rgba(0,255,136,0.2); }
+    .btn:active { transform: scale(0.98); }
+    .btn.danger { border-color: var(--accent2); color: var(--accent2); background: rgba(255,68,68,0.1); }
+
+    /* Results table */
+    .results-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .results-count {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+    .results-count span { color: var(--accent); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    thead tr {
+      border-bottom: 2px solid var(--border);
+    }
+    th {
+      font-family: var(--mono);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-dim);
+      text-align: left;
+      padding: 8px 12px;
+      font-weight: 400;
+    }
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    tbody tr:hover { background: var(--surface); }
+    td {
+      padding: 12px 12px;
+      vertical-align: middle;
+    }
+    .cwe-id {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--accent3);
+      white-space: nowrap;
+    }
+    .weakness-name {
+      color: var(--text);
+      line-height: 1.4;
+      max-width: 400px;
+    }
+    .pill {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 10px;
+      padding: 2px 7px;
+      border-radius: 3px;
+      white-space: nowrap;
+    }
+    .pill-high { background: rgba(255,68,68,0.15); color: #ff6666; border: 1px solid rgba(255,68,68,0.3); }
+    .pill-medium { background: rgba(255,170,0,0.15); color: #ffaa44; border: 1px solid rgba(255,170,0,0.3); }
+    .pill-low { background: rgba(0,255,136,0.1); color: var(--accent); border: 1px solid rgba(0,255,136,0.2); }
+    .pill-none { background: rgba(136,136,153,0.1); color: var(--text-dim); border: 1px solid var(--border); }
+    .pill-base { background: rgba(68,136,255,0.1); color: #6699ff; border: 1px solid rgba(68,136,255,0.2); }
+
+    /* Detail panel */
+    .detail-back {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text-dim);
+      cursor: pointer;
+      margin-bottom: 24px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: color 0.15s;
+    }
+    .detail-back:hover { color: var(--accent); }
+    .detail-header {
+      margin-bottom: 32px;
+    }
+    .detail-id {
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--accent3);
+      margin-bottom: 8px;
+    }
+    .detail-title {
+      font-size: 22px;
+      font-weight: 600;
+      line-height: 1.3;
+      margin-bottom: 16px;
+    }
+    .detail-meta {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 700px) { .detail-grid { grid-template-columns: 1fr; } }
+    .detail-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 20px;
+    }
+    .detail-card.full { grid-column: 1 / -1; }
+    .card-title {
+      font-family: var(--mono);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-dim);
+      margin-bottom: 14px;
+    }
+    .detail-desc {
+      font-size: 14px;
+      line-height: 1.7;
+      color: var(--text);
+    }
+    .consequence-item {
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+    .consequence-item:last-child { border-bottom: none; }
+    .consequence-scope {
+      font-family: var(--mono);
+      font-size: 10px;
+      min-width: 100px;
+      padding-top: 2px;
+    }
+    .consequence-impact {
+      font-size: 13px;
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .platform-tag {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 11px;
+      padding: 4px 10px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      margin: 3px;
+      color: var(--text-dim);
+    }
+
+    /* Matrix panel */
+    .platform-select-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 28px;
+    }
+    .platform-btn {
+      font-family: var(--mono);
+      font-size: 11px;
+      padding: 6px 14px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text-dim);
+      cursor: pointer;
+      border-radius: 3px;
+      transition: all 0.15s;
+    }
+    .platform-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .platform-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(0,255,136,0.08); }
+
+    .matrix-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 700px) { .matrix-layout { grid-template-columns: 1fr; } }
+
+    .scope-block { margin-bottom: 6px; }
+    .scope-name {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .impact-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+    .impact-label {
+      font-size: 12px;
+      color: var(--text);
+      width: 200px;
+      flex-shrink: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .bar-track {
+      flex: 1;
+      height: 6px;
+      background: var(--surface2);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      background: var(--accent);
+      transition: width 0.6s cubic-bezier(0.4,0,0.2,1);
+    }
+    .bar-pct {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--text-dim);
+      width: 40px;
+      text-align: right;
+    }
+
+    .top-risk-item {
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .top-risk-item:last-child { border-bottom: none; }
+    .risk-rank {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--accent);
+      margin-bottom: 4px;
+    }
+    .risk-name { font-size: 13px; line-height: 1.4; margin-bottom: 6px; }
+    .risk-meta {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    /* Loading / empty */
+    .loading {
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--text-dim);
+      padding: 40px 0;
+      text-align: center;
+    }
+    .loading::after {
+      content: '...';
+      animation: dots 1s infinite;
+    }
+    @keyframes dots {
+      0%,100% { content: '.'; }
+      33% { content: '..'; }
+      66% { content: '...'; }
+    }
+    .empty {
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--text-dim);
+      padding: 40px 0;
+      text-align: center;
+    }
+
+    /* Pagination */
+    .pagination {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 20px;
+      justify-content: center;
+    }
+    .page-info { font-family: var(--mono); font-size: 12px; color: var(--text-dim); }
+
+    /* Lookup panel */
+    .lookup-bar {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 28px;
+      align-items: flex-end;
+    }
+    .lookup-input {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .lookup-input label {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .lookup-input input[type="number"] { width: 160px; font-size: 16px; padding: 10px 14px; }
+
+    /* Animate in */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .fade-up { animation: fadeUp 0.3s ease forwards; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <div class="header-inner">
+      <div class="logo">CWE<span>/</span>INSIGHT</div>
+      <div class="badge">v4.19.1 — 969 WEAKNESSES</div>
+    </div>
+  </div>
+</header>
+
+<main class="container">
+  <div class="hero">
+    <h1>Security Threat<br><em>Intelligence</em> Dashboard</h1>
+    <p>Explore 969 CWE weaknesses. Search by platform, likelihood, and abstraction level. Analyse CIA impact distributions across languages and technologies.</p>
+    <div class="stat-row" id="stats">
+      <div class="stat"><div class="stat-num" id="stat-total">—</div><div class="stat-label">Total Weaknesses</div></div>
+      <div class="stat"><div class="stat-num" id="stat-platforms">11</div><div class="stat-label">Platforms Analysed</div></div>
+      <div class="stat"><div class="stat-num">3</div><div class="stat-label">API Endpoints</div></div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('search')">Search</button>
+    <button class="tab" onclick="switchTab('lookup')">Lookup by ID</button>
+    <button class="tab" onclick="switchTab('matrix')">CIA Matrix</button>
+  </div>
+
+  <!-- SEARCH PANEL -->
+  <div class="panel active" id="panel-search">
+    <div class="search-bar">
+      <div class="input-group">
+        <label>Platform</label>
+        <select id="s-platform" onchange="runSearch(0)">
+          <option value="">Any platform</option>
+          <option>C</option><option>C++</option><option>Java</option>
+          <option>Python</option><option>PHP</option><option>JavaScript</option>
+          <option>Go</option><option>Ruby</option><option>Perl</option>
+          <option>Web Based</option><option>Windows</option><option>Linux</option><option>Android</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <label>Likelihood</label>
+        <select id="s-likelihood" onchange="runSearch(0)">
+          <option value="">Any</option>
+          <option>High</option><option>Medium</option><option>Low</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <label>Abstraction</label>
+        <select id="s-abstraction" onchange="runSearch(0)">
+          <option value="">Any</option>
+          <option>Class</option><option>Base</option><option>Variant</option><option>Compound</option>
+        </select>
+      </div>
+      <button class="btn" onclick="runSearch(0)">Search</button>
+      <button class="btn danger" onclick="clearSearch()">Clear</button>
+    </div>
+
+    <div class="results-header">
+      <div class="results-count" id="results-count"></div>
+    </div>
+    <div id="search-results"></div>
+    <div class="pagination" id="pagination" style="display:none">
+      <button class="btn" id="btn-prev" onclick="changePage(-1)">← Prev</button>
+      <div class="page-info" id="page-info"></div>
+      <button class="btn" id="btn-next" onclick="changePage(1)">Next →</button>
+    </div>
+  </div>
+
+  <!-- LOOKUP PANEL -->
+  <div class="panel" id="panel-lookup">
+    <div class="lookup-bar">
+      <div class="lookup-input">
+        <label>CWE ID Number</label>
+        <input type="number" id="lookup-id" min="1" max="9999" placeholder="e.g. 79"
+          onkeydown="if(event.key==='Enter') lookupCWE()">
+      </div>
+      <button class="btn" onclick="lookupCWE()">Lookup</button>
+    </div>
+    <div id="lookup-result"></div>
+  </div>
+
+  <!-- MATRIX PANEL -->
+  <div class="panel" id="panel-matrix">
+    <div class="platform-select-row" id="platform-btns"></div>
+    <div class="matrix-layout" id="matrix-content">
+      <div class="loading">Loading matrix</div>
+    </div>
+  </div>
+</main>
+
+<script>
+  const API = '';
+  let searchOffset = 0;
+  let searchTotal = 0;
+  const LIMIT = 20;
+  let matrixData = null;
+  let currentPlatform = 'Java';
+
+  // ── Tab switching ──────────────────────────────────────────────
+  function switchTab(name) {
+    document.querySelectorAll('.tab').forEach((t,i) => {
+      t.classList.toggle('active', ['search','lookup','matrix'][i] === name);
+    });
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('panel-' + name).classList.add('active');
+    if (name === 'matrix' && !matrixData) loadMatrix();
+  }
+
+  // ── Search ─────────────────────────────────────────────────────
+  async function runSearch(offset) {
+    searchOffset = offset;
+    const platform = document.getElementById('s-platform').value;
+    const likelihood = document.getElementById('s-likelihood').value;
+    const abstraction = document.getElementById('s-abstraction').value;
+
+    let url = `${API}/api/v1/weaknesses/search?limit=${LIMIT}&offset=${offset}`;
+    if (platform) url += `&platform=${encodeURIComponent(platform)}`;
+    if (likelihood) url += `&likelihood=${encodeURIComponent(likelihood)}`;
+    if (abstraction) url += `&abstraction=${encodeURIComponent(abstraction)}`;
+
+    document.getElementById('search-results').innerHTML = '<div class="loading">Searching</div>';
+    document.getElementById('pagination').style.display = 'none';
+    document.getElementById('results-count').textContent = '';
+
+    try {
+      const res = await fetch(url);
+      const data = await res.json();
+      searchTotal = data.total;
+      renderSearchResults(data);
+      document.getElementById('search-results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch(e) {
+      document.getElementById('search-results').innerHTML = '<div class="empty">Error fetching results</div>';
+    }
+  }
+
+  function renderSearchResults(data) {
+    const el = document.getElementById('search-results');
+    document.getElementById('results-count').innerHTML =
+      `<span>${data.total}</span> weaknesses found`;
+
+    if (!data.results.length) {
+      el.innerHTML = '<div class="empty">No weaknesses match your filters</div>';
+      document.getElementById('pagination').style.display = 'none';
+      return;
+    }
+
+    el.innerHTML = `
+      <table>
+        <thead><tr>
+          <th>ID</th><th>Name</th><th>Abstraction</th><th>Likelihood</th><th>Platforms</th>
+        </tr></thead>
+        <tbody>
+          ${data.results.map(w => `
+            <tr class="fade-up" onclick="showDetail(${w.cwe_id})">
+              <td><div class="cwe-id">CWE-${w.cwe_id}</div></td>
+              <td><div class="weakness-name">${w.name}</div></td>
+              <td>${pillAbstraction(w.abstraction)}</td>
+              <td>${pillLikelihood(w.likelihood_of_exploit)}</td>
+              <td>${(w.applicable_platforms||[]).slice(0,2).map(p=>`<span class="platform-tag">${p.name}</span>`).join('')}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>`;
+
+    // Pagination
+    const pages = Math.ceil(data.total / LIMIT);
+    const currentPage = Math.floor(searchOffset / LIMIT) + 1;
+    if (pages > 1) {
+      document.getElementById('pagination').style.display = 'flex';
+      document.getElementById('page-info').textContent = `Page ${currentPage} of ${pages}`;
+      document.getElementById('btn-prev').disabled = searchOffset === 0;
+      document.getElementById('btn-next').disabled = searchOffset + LIMIT >= data.total;
+    }
+  }
+
+  function changePage(dir) {
+    searchOffset = Math.max(0, searchOffset + dir * LIMIT);
+    runSearch(searchOffset);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function clearSearch() {
+    document.getElementById('s-platform').value = '';
+    document.getElementById('s-likelihood').value = '';
+    document.getElementById('s-abstraction').value = '';
+    document.getElementById('search-results').innerHTML = '';
+    document.getElementById('results-count').textContent = '';
+    document.getElementById('pagination').style.display = 'none';
+  }
+
+  // ── Detail view ────────────────────────────────────────────────
+  async function showDetail(id) {
+    switchTab('lookup');
+    document.getElementById('lookup-id').value = id;
+    await lookupCWE();
+  }
+
+  async function lookupCWE() {
+    const id = document.getElementById('lookup-id').value;
+    if (!id) return;
+    const el = document.getElementById('lookup-result');
+    el.innerHTML = '<div class="loading">Loading CWE-' + id + '</div>';
+
+    try {
+      const res = await fetch(`${API}/api/v1/weaknesses/${id}`);
+      if (res.status === 404) { el.innerHTML = '<div class="empty">CWE-' + id + ' not found</div>'; return; }
+      if (res.status === 400) { el.innerHTML = '<div class="empty">Invalid ID — must be 1 to 9999</div>'; return; }
+      const w = await res.json();
+      renderDetail(w, el);
+    } catch(e) {
+      el.innerHTML = '<div class="empty">Error fetching weakness</div>';
+    }
+  }
+
+  function renderDetail(w, el) {
+    const platforms = (w.applicable_platforms || []).map(p =>
+      `<span class="platform-tag">${p.name}</span>`).join('');
+
+    const consequences = (w.consequences || []).map(c => `
+      <div class="consequence-item">
+        <div class="consequence-scope">${scopePill(c.scope)}</div>
+        <div class="consequence-impact">${c.impact}</div>
+      </div>`).join('');
+
+    const detection = (w.detection_methods || []).map(d =>
+      `<span class="platform-tag">${d.method}${d.effectiveness ? ' · ' + d.effectiveness : ''}</span>`
+    ).join('');
+
+    el.innerHTML = `
+      <div class="fade-up">
+        <div class="detail-header">
+          <div class="detail-id">CWE-${w.cwe_id}</div>
+          <div class="detail-title">${w.name}</div>
+          <div class="detail-meta">
+            ${pillAbstraction(w.abstraction)}
+            ${pillLikelihood(w.likelihood_of_exploit)}
+          </div>
+        </div>
+        <div class="detail-grid">
+          <div class="detail-card full">
+            <div class="card-title">Description</div>
+            <div class="detail-desc">${w.description}</div>
+          </div>
+          <div class="detail-card">
+            <div class="card-title">CIA Consequences</div>
+            ${consequences || '<div class="empty" style="padding:16px 0">No consequence data</div>'}
+          </div>
+          <div class="detail-card">
+            <div class="card-title">Applicable Platforms</div>
+            <div>${platforms || '<span class="detail-desc" style="color:var(--text-dim)">Not specified</span>'}</div>
+            <div style="margin-top:16px"><div class="card-title">Detection Methods</div>
+            <div>${detection || '<span class="detail-desc" style="color:var(--text-dim)">Not specified</span>'}</div></div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  // ── Matrix ─────────────────────────────────────────────────────
+  async function loadMatrix() {
+    try {
+      const res = await fetch(`${API}/api/v1/analysis/consequence-platform-matrix`);
+      matrixData = await res.json();
+      document.getElementById('stat-total').textContent = matrixData.metadata.total_weaknesses_in_dataset;
+      buildPlatformButtons();
+      showPlatform(currentPlatform);
+    } catch(e) {
+      document.getElementById('matrix-content').innerHTML = '<div class="empty">Failed to load matrix</div>';
+    }
+  }
+
+  function buildPlatformButtons() {
+    const container = document.getElementById('platform-btns');
+    const platforms = Object.keys(matrixData.matrix);
+    container.innerHTML = platforms.map(p => `
+      <button class="platform-btn ${p===currentPlatform?'active':''}"
+        onclick="showPlatform('${p}')">${p}</button>
+    `).join('');
+  }
+
+  function showPlatform(platform) {
+    currentPlatform = platform;
+    document.querySelectorAll('.platform-btn').forEach(b => {
+      b.classList.toggle('active', b.textContent === platform);
+    });
+
+    const pData = matrixData.matrix[platform] || {};
+    const risks = matrixData.top_risks[platform] || [];
+
+    const scopeColors = {
+      'Confidentiality': '#4488ff',
+      'Integrity': '#ff8844',
+      'Availability': '#ff4444',
+      'Access Control': '#aa44ff',
+    };
+
+    const scopeBlocks = Object.entries(pData).map(([scope, impacts]) => {
+      const color = scopeColors[scope] || 'var(--accent)';
+      const bars = Object.entries(impacts)
+        .sort((a,b) => b[1].percentage - a[1].percentage)
+        .map(([impact, stats]) => `
+          <div class="impact-bar">
+            <div class="impact-label" title="${impact}">${impact}</div>
+            <div class="bar-track">
+              <div class="bar-fill" style="width:${stats.percentage}%;background:${color}"></div>
+            </div>
+            <div class="bar-pct">${stats.percentage}%</div>
+          </div>`).join('');
+      return `<div class="scope-block">
+        <div class="scope-name" style="color:${color}">${scope}</div>
+        ${bars}
+      </div>`;
+    }).join('<br>');
+
+    const riskItems = risks.map((r,i) => `
+      <div class="top-risk-item">
+        <div class="risk-rank">#${i+1} HIGHEST RISK</div>
+        <div class="risk-name" style="cursor:pointer;color:var(--accent3)"
+          onclick="showDetail(${r.cwe_id})">CWE-${r.cwe_id}: ${r.name}</div>
+        <div class="risk-meta">
+          ${pillLikelihood(r.likelihood_of_exploit)}
+          <span class="pill pill-base">${r.distinct_consequence_scopes} scopes</span>
+        </div>
+      </div>`).join('');
+
+    document.getElementById('matrix-content').innerHTML = `
+      <div class="detail-card fade-up">
+        <div class="card-title">CIA Impact Distribution — ${platform}</div>
+        ${scopeBlocks || '<div class="empty" style="padding:16px 0">No data</div>'}
+      </div>
+      <div class="detail-card fade-up">
+        <div class="card-title">Top Risk CWEs — ${platform}</div>
+        ${riskItems || '<div class="empty" style="padding:16px 0">No data</div>'}
+      </div>`;
+  }
+
+  // ── Helpers ────────────────────────────────────────────────────
+  function pillLikelihood(l) {
+    if (l === 'High') return `<span class="pill pill-high">HIGH</span>`;
+    if (l === 'Medium') return `<span class="pill pill-medium">MEDIUM</span>`;
+    if (l === 'Low') return `<span class="pill pill-low">LOW</span>`;
+    return `<span class="pill pill-none">UNRATED</span>`;
+  }
+  function pillAbstraction(a) {
+    return `<span class="pill pill-base">${a||'—'}</span>`;
+  }
+  function scopePill(s) {
+    const colors = { Confidentiality:'#4488ff', Integrity:'#ff8844', Availability:'#ff4444' };
+    const c = colors[s] || 'var(--text-dim)';
+    return `<span style="color:${c};font-family:var(--mono);font-size:10px">${s}</span>`;
+  }
+
+  // ── Init ───────────────────────────────────────────────────────
+  window.addEventListener('load', () => runSearch(0));
+</script>
+</body>
+</html>
