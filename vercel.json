@@ -7,11 +7,5 @@
     "env": {
       "FLASK_ENV": "production"
     }
-  },
-  "functions": {
-    "run.py": {
-      "memory": 1024,
-      "maxDuration": 60
-    }
   }
 }
