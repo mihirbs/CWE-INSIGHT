@@ -1,0 +1,17 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "env": {
+    "FLASK_ENV": "production"
+  },
+  "build": {
+    "env": {
+      "FLASK_ENV": "production"
+    }
+  },
+  "functions": {
+    "run.py": {
+      "memory": 1024,
+      "maxDuration": 60
+    }
+  }
+}

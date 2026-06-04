@@ -1,0 +1,16 @@
+[project]
+name = "cwe-insight"
+version = "1.0.0"
+description = "CWE Insight — Flask web app for browsing and analysing CWE weaknesses."
+requires-python = ">=3.12"
+dependencies = [
+    "flask>=3.1.0",
+    "defusedxml>=0.7.1",
+]
+
+# Tells Vercel where to find the Flask `app` instance.
+# Vercel's default entrypoint scan looks for app.py / main.py / server.py
+# at the repo root (or under src/, app/, api/). This project keeps its
+# WSGI app in run.py, so we point Vercel at it explicitly.
+[tool.vercel]
+entrypoint = "run:app"

@@ -22,8 +22,14 @@ class BaseConfig:
         os.path.join(os.path.dirname(__file__), "..", "data", "cwec_v4_19_1.xml"),
     )
 
-    # SQLite database for caching parsed CWE data — override with CWE_DB_PATH
-    DB_PATH: str = os.environ.get("CWE_DB_PATH", "cwe_cache.db")
+    # SQLite database for caching parsed CWE data — override with CWE_DB_PATH.
+    # On Vercel the working directory is read-only; only /tmp is writable, and
+    # it persists for the lifetime of a single function instance (which is
+    # exactly what we want for a per-instance parse-once cache).
+    _DEFAULT_DB_PATH: str = (
+        "/tmp/cwe_cache.db" if os.environ.get("VERCEL") else "cwe_cache.db"
+    )
+    DB_PATH: str = os.environ.get("CWE_DB_PATH", _DEFAULT_DB_PATH)
 
     RATELIMIT_DEFAULT: str = "200 per day, 50 per hour"
     RATELIMIT_STORAGE_URI: str = "memory://"
@@ -35,7 +41,9 @@ class BaseConfig:
 class DevelopmentConfig(BaseConfig):
     """Local dev config — debug on, separate DB so we don't touch production data."""
     DEBUG: bool = True
-    DB_PATH: str = "cwe_cache_dev.db"
+    DB_PATH: str = (
+        "/tmp/cwe_cache_dev.db" if os.environ.get("VERCEL") else "cwe_cache_dev.db"
+    )
 
 
 class TestingConfig(BaseConfig):
